@@ -4,6 +4,71 @@ let usersDivEl;
 let postsDivEl;
 let loadButtonEl;
 
+function createComment(comments) {
+    let commentString = document.createElement('ul');
+    for (i=0; i < comments.length; i++) {
+        const comment = comments[i];
+
+        const oneComment = document.createElement('li');
+        
+        const comTitle = document.createElement('strong');
+        comTitle.setAttribute('postId', comment.postId);
+        comTitle.setAttribute('id', comment.id);
+        comTitle.innerHTML = comment.name;
+
+        const comEmail = document.createElement('i');
+        comEmail.innerHTML = '<br>' + comment.email + '<hr>';
+
+        const comBody = document.createElement('p');
+        comBody.innerHTML = comment.body;
+
+        oneComment.appendChild(comTitle);
+        oneComment.appendChild(comBody);
+        oneComment.appendChild(comEmail);
+
+        commentString.appendChild(oneComment);
+
+    }
+    return commentString;
+}
+
+function onCommentReceived() {
+    
+    const text = this.responseText;
+    const comments = JSON.parse(text);
+
+    //error handling... not done
+    if (comments.length != 0) {
+        var postId = comments[1].postId;
+    } else {
+        return;
+    }
+    //---
+
+    const post = document.getElementById('postNumber'+postId);
+    const numberOfPosts = post.parentElement.parentElement.childElementCount;
+
+    for (i=1; i<numberOfPosts+1; i++) {
+        const check = document.getElementById('postNumber'+i);
+        if (check.childElementCount>1) {
+            check.removeChild(check.lastChild);
+            if (check.isEqualNode(post)) {
+                return;
+            }
+        }
+    }
+    post.appendChild(createComment(comments));
+}
+
+function onLoadComments() {
+    postId = this.getAttribute('postId');
+
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', onCommentReceived);
+    xhr.open('GET', BASE_URL + '/comments?postId=' + postId);
+    xhr.send();
+}
+
 function createPostsList(posts) {
     const ulEl = document.createElement('ul');
 
@@ -11,18 +76,25 @@ function createPostsList(posts) {
         const post = posts[i];
 
         // creating paragraph
-        const strongEl = document.createElement('strong');
+        const strongEl = document.createElement('strong'); 
+        postId = post.id;   
         strongEl.textContent = post.title;
-
+        strongEl.setAttribute('postId', postId);
+      
         const pEl = document.createElement('p');
+        pEl.setAttribute('id', 'postNumber'+postId);
+        
         pEl.appendChild(strongEl);
+       
         pEl.appendChild(document.createTextNode(`: ${post.body}`));
+        strongEl.addEventListener('click', onLoadComments);
 
         // creating list item
         const liEl = document.createElement('li');
         liEl.appendChild(pEl);
 
         ulEl.appendChild(liEl);
+        
     }
 
     return ulEl;
