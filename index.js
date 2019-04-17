@@ -2,7 +2,9 @@ const BASE_URL = 'https://jsonplaceholder.typicode.com';
 
 let usersDivEl;
 let postsDivEl;
+let albumsDivE1;
 let loadButtonEl;
+let loadAlbumsButton;
 
 function createComment(comments) {
     let commentString = document.createElement('ul');
@@ -44,12 +46,12 @@ function onCommentReceived() {
         return;
     }
     //---
-
+ 
     const post = document.getElementById('postNumber'+postId);
-    const numberOfPosts = post.parentElement.parentElement.childElementCount;
+    const postList = post.parentElement.parentElement.childNodes;
 
-    for (i=1; i<numberOfPosts+1; i++) {
-        const check = document.getElementById('postNumber'+i);
+    for (i=0; i<postList.length; i++) {
+        const check = postList[i].firstChild;
         if (check.childElementCount>1) {
             check.removeChild(check.lastChild);
             if (check.isEqualNode(post)) {
@@ -179,14 +181,31 @@ function createUsersTable(users) {
     return tableEl;
 }
 
+function createAlbumsTable(albums) {
+    return document.createElement('p');
+
+}
+
 function onUsersReceived() {
     loadButtonEl.remove();
+    albumsDivE1.remove();
 
     const text = this.responseText;
     const users = JSON.parse(text);
 
     const divEl = document.getElementById('users-content');
     divEl.appendChild(createUsersTable(users));
+}
+
+function onAlbumsReceived() {
+    loadAlbumsButton.remove();
+    postsDivEl.remove();
+
+    const text = this.responseText;
+    const albums = JSON.parse(text);
+
+    const divE1 = document.getElementById('albums-content');
+    divE1.appendChild(createAlbumsTable(albums));
 }
 
 function onLoadUsers() {
@@ -196,9 +215,19 @@ function onLoadUsers() {
     xhr.send();
 }
 
+function onLoadAlbums() {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', onAlbumsReceived);
+    xhr.open('GET', BASE_URL+ '/albums');
+    xhr.send();
+}
+
 document.addEventListener('DOMContentLoaded', (event) => {
     usersDivEl = document.getElementById('users');
     postsDivEl = document.getElementById('posts');
+    albumsDivE1 = document.getElementById('albums');
     loadButtonEl = document.getElementById('load-users');
+    loadAlbumsButton = document.getElementById('load-albums');
     loadButtonEl.addEventListener('click', onLoadUsers);
+    loadAlbumsButton.addEventListener('click', onLoadAlbums);
 });
