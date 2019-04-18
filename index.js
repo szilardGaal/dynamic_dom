@@ -2,13 +2,36 @@ const BASE_URL = 'https://jsonplaceholder.typicode.com';
 
 let usersDivEl;
 let postsDivEl;
-let albumsDivE1;
+let albumsDivEl;
 let loadButtonEl;
-let loadAlbumsButton;
+
+function createPhotos(content) {
+    let photos = document.createElement('p');
+    let title = document.createElement('h3');
+    title.innerHTML = "Photos";
+    photos.appendChild(title);
+
+    for (let i = 0; i < content.length; i ++) {
+        const photo = content[i];
+
+        const a = document.createElement('a');
+        a.href = photo.url;
+        const thumbnail = document.createElement('img');
+        thumbnail.src = photo.thumbnailUrl;
+       
+        a.appendChild(thumbnail)
+        photos.appendChild(a);
+    }
+    return photos;
+}
 
 function createComment(comments) {
-    let commentString = document.createElement('ul');
-    for (i=0; i < comments.length; i++) {
+    let commentList = document.createElement('ul');
+    let title = document.createElement('h3');
+    title.innerHTML = "Comments";
+    commentList.appendChild(title);
+
+    for (let i = 0; i < comments.length; i++) {
         const comment = comments[i];
 
         const oneComment = document.createElement('li');
@@ -28,20 +51,42 @@ function createComment(comments) {
         oneComment.appendChild(comBody);
         oneComment.appendChild(comEmail);
 
-        commentString.appendChild(oneComment);
+        commentList.appendChild(oneComment);
 
     }
-    return commentString;
+    return commentList;
 }
 
-function onCommentReceived() {
+function onPhotosReceived() {
+    const text = this.responseText;
+    const content = JSON.parse(text);
+
+    const albumId = content[0].albumId;
+
+    const album = document.getElementById('albumId'+albumId);
+    debugger;
+    const albumList = album.parentElement.parentElement.childNodes;
+
+    for (let i = 0; i < albumList.length; i ++) {
+        const check = albumList[i].firstChild;
+        if (check.childElementCount>0) {
+            check.removeChild(check.lastChild);
+            if (check.isEqualNode(album)) {
+                return;
+            }
+        }
+    }
+    album.appendChild(createPhotos(content));
+}
+
+function onCommentsReceived() {
     
     const text = this.responseText;
     const comments = JSON.parse(text);
 
     //error handling... not done
-    if (comments.length != 0) {
-        var postId = comments[1].postId;
+    if (comments.length > 0) {
+        var postId = comments[0].postId;
     } else {
         return;
     }
@@ -50,7 +95,7 @@ function onCommentReceived() {
     const post = document.getElementById('postNumber'+postId);
     const postList = post.parentElement.parentElement.childNodes;
 
-    for (i=0; i<postList.length; i++) {
+    for (let i = 0; i < postList.length; i++) {
         const check = postList[i].firstChild;
         if (check.childElementCount>1) {
             check.removeChild(check.lastChild);
@@ -66,9 +111,42 @@ function onLoadComments() {
     postId = this.getAttribute('postId');
 
     const xhr = new XMLHttpRequest();
-    xhr.addEventListener('load', onCommentReceived);
+    xhr.addEventListener('load', onCommentsReceived);
     xhr.open('GET', BASE_URL + '/comments?postId=' + postId);
     xhr.send();
+}
+
+function onLoadPhotos() {
+  //  debugger;
+    albumId = this.getAttribute('albumId');
+
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', onPhotosReceived);
+    xhr.open('GET',BASE_URL + '/photos?albumId=' + albumId);
+    xhr.send();
+}
+
+function createAlbumsList(albums) {
+    const ulEl = document.createElement('ul');
+
+    for (let i = 0; i < albums.length; i++) {
+        const album = albums[i];
+
+        const strongEl = document.createElement('strong');
+        const albumId = album.id;
+
+        strongEl.innerHTML = album.title;
+        strongEl.setAttribute('id', 'albumId'+albumId);
+        strongEl.setAttribute('albumId', albumId);
+
+        strongEl.addEventListener('click', onLoadPhotos);
+
+        const liEl = document.createElement('li');
+
+        liEl.appendChild(strongEl);
+        ulEl.appendChild(liEl);
+    }
+    return ulEl;
 }
 
 function createPostsList(posts) {
@@ -95,14 +173,27 @@ function createPostsList(posts) {
         const liEl = document.createElement('li');
         liEl.appendChild(pEl);
 
-        ulEl.appendChild(liEl);
-        
+        ulEl.appendChild(liEl);   
     }
-
     return ulEl;
 }
 
+function onAlbumsReceived() {
+    postsDivEl.style.display = 'none';
+    albumsDivEl.style.display = 'block';
+
+    const text = this.responseText;
+    const albums = JSON.parse(text);
+
+    const divEl = document.getElementById('albums-content');
+    while (divEl.firstChild) {
+        divEl.removeChild(divEl.firstChild);
+    }
+    divEl.appendChild(createAlbumsList(albums));
+}
+
 function onPostsReceived() {
+    albumsDivEl.style.display = 'none';
     postsDivEl.style.display = 'block';
 
     const text = this.responseText;
@@ -113,6 +204,16 @@ function onPostsReceived() {
         divEl.removeChild(divEl.firstChild);
     }
     divEl.appendChild(createPostsList(posts));
+}
+
+function onLoadAlbums() {
+    const el = this;
+    const userId = el.getAttribute('data-user-id');
+
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', onAlbumsReceived);
+    xhr.open('GET', BASE_URL+ '/albums?userId=' + userId);
+    xhr.send();
 }
 
 function onLoadPosts() {
@@ -153,24 +254,37 @@ function createUsersTableBody(users) {
 
         // creating name cell
         const dataUserIdAttr = document.createAttribute('data-user-id');
+        const dataUserIdAttrAlbum = document.createAttribute('data-user-id');
         dataUserIdAttr.value = user.id;
+        dataUserIdAttrAlbum.value = user.id;
 
         const buttonEl = document.createElement('button');
-        buttonEl.textContent = user.name;
+        buttonEl.textContent = 'show posts';
         buttonEl.setAttributeNode(dataUserIdAttr);
         buttonEl.addEventListener('click', onLoadPosts);
 
+        const loadAlbumsButton = document.createElement('button');
+        loadAlbumsButton.textContent = 'show albums'; 
+        loadAlbumsButton.setAttributeNode(dataUserIdAttrAlbum);
+        loadAlbumsButton.addEventListener('click', onLoadAlbums);
+     
+       
         const nameTdEl = document.createElement('td');
-        nameTdEl.appendChild(buttonEl);
+        nameTdEl.textContent = user.name;
+
+        const buttonTdEl = document.createElement('td');
+
+        buttonTdEl.appendChild(buttonEl);
+        buttonTdEl.appendChild(loadAlbumsButton);
 
         // creating row
         const trEl = document.createElement('tr');
         trEl.appendChild(idTdEl);
         trEl.appendChild(nameTdEl);
+        trEl.appendChild(buttonTdEl);
 
         tbodyEl.appendChild(trEl);
     }
-
     return tbodyEl;
 }
 
@@ -181,31 +295,14 @@ function createUsersTable(users) {
     return tableEl;
 }
 
-function createAlbumsTable(albums) {
-    return document.createElement('p');
-
-}
-
 function onUsersReceived() {
     loadButtonEl.remove();
-    albumsDivE1.remove();
 
     const text = this.responseText;
     const users = JSON.parse(text);
 
     const divEl = document.getElementById('users-content');
     divEl.appendChild(createUsersTable(users));
-}
-
-function onAlbumsReceived() {
-    loadAlbumsButton.remove();
-    postsDivEl.remove();
-
-    const text = this.responseText;
-    const albums = JSON.parse(text);
-
-    const divE1 = document.getElementById('albums-content');
-    divE1.appendChild(createAlbumsTable(albums));
 }
 
 function onLoadUsers() {
@@ -215,19 +312,11 @@ function onLoadUsers() {
     xhr.send();
 }
 
-function onLoadAlbums() {
-    const xhr = new XMLHttpRequest();
-    xhr.addEventListener('load', onAlbumsReceived);
-    xhr.open('GET', BASE_URL+ '/albums');
-    xhr.send();
-}
-
 document.addEventListener('DOMContentLoaded', (event) => {
     usersDivEl = document.getElementById('users');
     postsDivEl = document.getElementById('posts');
-    albumsDivE1 = document.getElementById('albums');
+    albumsDivEl = document.getElementById('albums');
     loadButtonEl = document.getElementById('load-users');
     loadAlbumsButton = document.getElementById('load-albums');
     loadButtonEl.addEventListener('click', onLoadUsers);
-    loadAlbumsButton.addEventListener('click', onLoadAlbums);
 });
